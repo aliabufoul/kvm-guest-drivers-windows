@@ -1,4 +1,5 @@
 # KVM/QEMU Windows guest drivers (virtio-win) #
+HCK-CI Test
 
 This repository contains KVM/QEMU Windows guest drivers, for both
 paravirtual and emulated hardware. The code builds and ships as part
