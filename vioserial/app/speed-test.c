@@ -1,27 +1,3 @@
-/*
-typical qemu command-line
-for vsock:
--device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=3,bus=pci.0,addr=0x4
-for serial:
--chardev socket,path=/tmp/foo,id=foo -device virtserialport,bus=virtio-serial0.0,nr=2,chardev=foo,id=test0,name=test0
-*/
-/*
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <time.h>
-#include <linux/vm_sockets.h>
-#include <linux/un.h>
-*/
-
 #include "speed-test.h"
 
 #define MAGIC 0xaabbccff
@@ -32,14 +8,11 @@ typedef struct
     int size;
 } req_header;
 
-static int write_splitted(int sockfd, char *buf, int size, int split)
+static int write_splitted(int sockfd, char *buf, int size)
 {
     int chunk = 0x4000;
     int done = 0;
     int res;
-    if (!split) {
-        return write(sockfd, buf, size);
-    }
     while (size)
     {
         if (size < chunk)
@@ -65,7 +38,7 @@ static uint64_t time_ms()
     return res;
 }
 
-static void do_client_job(int sockfd, int split)
+static void do_client_job(int sockfd)
 {
     req_header r;
     int size = 1024 * 1024;
@@ -80,7 +53,7 @@ static void do_client_job(int sockfd, int split)
             printf("Can't write %d, error %d\n", (int)sizeof(r), errno);
             return;
         }
-        if (write_splitted(sockfd, p, size, split) < 0) {
+        if (write_splitted(sockfd, p, size) < 0) {
             printf("Can't write %d, error %d\n", (int)size, errno);
             return;
         }
@@ -162,72 +135,19 @@ static int do_server_job(int sockfd)
 #define DEVNAME "\\\\.\\test0"
 #endif
 
-static int usage(char *s)
-{
-    printf("%s [-v|-s] [-c]\n", s);
-    printf("\t-v\t\tUse vsock\n");
-    printf("\t-s\t\tUse serial\n");
-    printf("\t-c\t\tClient\n");
-    printf("\t-d devicename\t(for serial client, default %s)\n", DEVNAME);
-    return 1;
-}
-
-int speed_test(int client, int vsock, int unixsock)
+int speed_test(int client)
 {
     int sockfd = 0, ret;
-    //int client = 0, vsock = 0, unixsock = 0;
     int type = SOCK_STREAM;
     char *devname = DEVNAME;
-    struct sockaddr_vm serv_addr = { 0 };
     struct sockaddr_vm local_addr = { 0 };
     struct  sockaddr_un unix_addr = { AF_UNIX, "/tmp/foo" };
-    /*
-    if (argc < 2)
-    {
-        return usage(*argv);
-    }
-    */
+
     local_addr.svm_family = AF_VSOCK;
     local_addr.svm_port = VMADDR_PORT_ANY;
     local_addr.svm_cid = 3;
 
-    serv_addr.svm_family = AF_VSOCK;
-    serv_addr.svm_port = 5000;
-    serv_addr.svm_cid = 2;
-
-    /*
-    if (argc >= 2)
-    {
-        int i;
-        for (i = 1; i < argc; ++i)
-        {
-            char *s = argv[i];
-            if (s[0] != '-') {
-                return usage(*argv);
-            }
-            switch (s[1])
-            {
-            case 'c': client = 1; break;
-            case 's': vsock = 0; break;
-            case 'v': vsock = 1; break;
-            case 'u': unixsock = 1; break;
-            case 'd':
-                devname = argv[i + 1]; i++;
-                printf("using device %s\n", devname);
-                break;
-            default: return usage(*argv);
-            }
-        }
-    }
-    */
-    if (vsock && unixsock) {
-        printf("incompatible options\n");
-        return 1;
-    }
-
-    if (vsock)
-        sockfd = socket(AF_VSOCK, type, 0);
-    else if (!client || unixsock)
+    if (!client)
         sockfd = socket(AF_UNIX, type, 0);
     else
         sockfd = open(devname, O_RDWR);
@@ -237,11 +157,7 @@ int speed_test(int client, int vsock, int unixsock)
         return 1;
     }
 
-    if (vsock) {
-        struct sockaddr_vm *a = client ? &local_addr : &serv_addr;
-        ret = bind(sockfd, (struct sockaddr*)a, sizeof(local_addr));
-    }
-    else if (!client) {
+    if (!client) {
         unlink(unix_addr.sun_path);
         ret = bind(sockfd, (struct sockaddr*)&unix_addr, sizeof(unix_addr));
     }
@@ -260,25 +176,7 @@ int speed_test(int client, int vsock, int unixsock)
             printf("error on listen: %d\n", errno);
             return 1;
         }
-    }
 
-    if (vsock && client) {
-        ret = connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-        if (ret < 0) {
-            printf("Failed to connect to %d:%d, error %d\n", serv_addr.svm_cid, serv_addr.svm_port, errno);
-            return 1;
-        }
-    }
-    else if (unixsock && client) {
-        ret = connect(sockfd, (struct sockaddr *)&unix_addr, sizeof(unix_addr));
-        if (ret < 0) {
-            printf("Failed to connect to %s, error %d\n", unix_addr.sun_path, errno);
-            return 1;
-        }
-    }
-
-
-    if (!client) {
         int listenfd = sockfd;
         socklen_t len = sizeof(local_addr);
         sockfd = accept(listenfd, (struct sockaddr*)&local_addr, &len);
@@ -290,10 +188,10 @@ int speed_test(int client, int vsock, int unixsock)
     }
 
     if (client) {
-        do_client_job(sockfd, vsock == 0);
+        do_client_job(sockfd);
     }
     else {
-        while (!do_server_job(sockfd) && !vsock);
+        while (!do_server_job(sockfd));
     }
 
     close(sockfd);

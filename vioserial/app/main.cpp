@@ -207,7 +207,7 @@ wmain(
     BOOLEAN stoptest = FALSE;
     BOOLEAN ovrl = TRUE;
     UINT ifIndex = 0;
-    int speedTest = 0, client = 0, unixsock = 0, vsock = 0;
+    int speedTest = 0, client = 0;
 
     if(argc >= 2)
     {
@@ -219,9 +219,6 @@ wmain(
             else if (_wcsicmp(L"-c", argv[i]) == 0) {
                 client = 1;
             }
-            else if (_wcsicmp(L"-u", argv[i]) == 0) {
-                unixsock = 1;
-            }
         }
         if (_wcsicmp(L"-n", argv[1]) == 0) {
            ovrl = FALSE;
@@ -230,7 +227,7 @@ wmain(
 
     if (speedTest)
     {
-        speed_test(client, vsock, unixsock);
+        speed_test(client);
         return 0;
     }
 

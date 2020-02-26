@@ -1,9 +1,6 @@
 #pragma once
 /*
 typical qemu command-line
-for vsock:
--device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=3,bus=pci.0,addr=0x4
-for serial:
 -chardev socket,path=/tmp/foo,id=foo -device virtserialport,bus=virtio-serial0.0,nr=2,chardev=foo,id=test0,name=test0
 */
 #include <sys/socket.h>
@@ -24,7 +21,7 @@ for serial:
 #ifdef __cplusplus
 extern "C" {
 #endif
-    int speed_test(int client, int vsock, int unixsock);
+    int speed_test(int client);
 #ifdef __cplusplus
 }
 #endif
