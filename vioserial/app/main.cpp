@@ -207,27 +207,21 @@ wmain(
     BOOLEAN stoptest = FALSE;
     BOOLEAN ovrl = TRUE;
     UINT ifIndex = 0;
-    int speedTest = 0, client = 0;
+    int speedTest = 0;
 
     if(argc >= 2)
     {
-        for (unsigned int i = 1; i < argc; ++i)
-        {
-            if (_wcsicmp(L"-sp", argv[i]) == 0) {
-                speedTest = 1;
-            }
-            else if (_wcsicmp(L"-c", argv[i]) == 0) {
-                client = 1;
-            }
+        if (_wcsicmp(L"-sp", argv[1]) == 0) {
+            speedTest = 1;
         }
-        if (_wcsicmp(L"-n", argv[1]) == 0) {
+        else if (_wcsicmp(L"-n", argv[1]) == 0) {
            ovrl = FALSE;
         }
     }
 
     if (speedTest)
     {
-        speed_test(client);
+        speed_test(CLIENT);
         return 0;
     }
 
