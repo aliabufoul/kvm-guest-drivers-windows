@@ -1,7 +1,12 @@
-//#include <basetyps.h>
+#include "speed-test.h"
+#define CLIENT 1
+#define SERVER 0
+
+#ifndef linux
+
 #include "device.h"
 #include "assert.h"
-#include "speed-test.h"
+
 
 #pragma warning(default:4201)
 
@@ -299,3 +304,12 @@ wmain(
     delete m_pDev;
     return 0;
 }
+
+#else
+
+int main() {
+    speed_test(SERVER);
+    return 0;
+}
+
+#endif
